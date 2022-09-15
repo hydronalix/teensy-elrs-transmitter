@@ -54,20 +54,20 @@ int Is_Rudder_Reverse   =0;
 
 // IO setup
 // pins that used for the Joystick
-const int analogInPinAileron = A4;
-const int analogInPinElevator = A3;
-const int analogInPinThrottle = A2;
-const int analogInPinRudder = A1;
-const int VOLTAGE_READ_PIN = A0;
+const int ANALOG_PIN_AILERON = A4;
+const int ANALOG_PIN_ELEVATOR = A3;
+const int ANALOG_PIN_THROTTLE = A2; /* only use throttle n rudder for the lil guy */ 
+const int ANALOG_PIN_RUDDER = A1;
+const int VOLTAGE_READ_PIN = A0; 
 
 // pins that used for the switch
-const int DIGITAL_PIN_SWITCH_ARM = 4;  // Arm switch
+const int DIGITAL_PIN_SWITCH_AUX1 = 4;  /* use for joystick clicky */
 const int DIGITAL_PIN_SWITCH_AUX2 = 3; //
 const int DIGITAL_PIN_SWITCH_AUX3 = 2;  //
 // const int DIGITAL_PIN_SWITCH_AUX4 = 5;  //
 
 // pins that used for output
-const int DIGITAL_PIN_LED = 5;    // in pcb v0.9 led is reused from AUX4 (remember to add 300om resistor in led)
+const int DIGITAL_PIN_LED = LED_BUILTIN;    // in pcb v0.9 led is reused from AUX4 (remember to add 300om resistor in led)
 const int DIGITAL_PIN_BUZZER = 7; // do not use in pcb v0.9
 
 //----- Voltage monitoring -------------------------
@@ -77,6 +77,9 @@ const float WARNING_VOLTAGE = 7.4; // 2S Lipo
 // Define Commond for start Up Setting
 #define RC_MIN_COMMAND 600
 #define RC_MAX_COMMAND 1400
+
+/* other defines perhaps useful */
+#define BATTERY_CHECKS 0
 
 // from https://github.com/DeviationTX/deviation/pull/1009/ ELRS menu implement in deviation TX
 /*static uint8_t  currentPktRate =1; //  "250Hz", "150Hz", "50Hz"

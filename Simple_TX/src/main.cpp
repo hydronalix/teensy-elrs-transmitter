@@ -207,15 +207,15 @@ bool calibrationProcess() {
 
     if (currentMillis <CALIB_CENT_TMO){
         // A Center
-        int val = analogRead(analogInPinAileron);
+        int val = analogRead(ANALOG_PIN_AILERON);
         calValues.aileronCenter = val;
         
         // E Center
-        val = analogRead(analogInPinElevator);
+        val = analogRead(ANALOG_PIN_ELEVATOR);
         calValues.elevatorCenter = val;
 
         // R Center
-        val = analogRead(analogInPinRudder);
+        val = analogRead(ANALOG_PIN_RUDDER);
         calValues.rudderCenter = val;
     
      Serial.print("Aileron_Min:");
@@ -232,7 +232,7 @@ bool calibrationProcess() {
     else if (currentMillis > CALIB_CENT_TMO && currentMillis < CALIB_TMO){
     //while ((calibrationTimerStart + CALIB_TMO ) < millis()) {
         // A Min-Max
-        int val = analogRead(analogInPinAileron);
+        int val = analogRead(ANALOG_PIN_AILERON);
         if (val < calValues.aileronMin) {
             calValues.aileronMin = val;
         } 
@@ -240,7 +240,7 @@ bool calibrationProcess() {
             calValues.aileronMax = val;
         }
         // E Min-Max
-        val = analogRead(analogInPinElevator);
+        val = analogRead(ANALOG_PIN_ELEVATOR);
         if (val < calValues.elevatorMin) {
             calValues.elevatorMin = val;
         } 
@@ -249,7 +249,7 @@ bool calibrationProcess() {
         }
 
         // T Min-Max
-        val = analogRead(analogInPinThrottle);
+        val = analogRead(ANALOG_PIN_THROTTLE);
         if (val < calValues.thrMin) {
             calValues.thrMin = val;
         } 
@@ -258,7 +258,7 @@ bool calibrationProcess() {
         }
 
         // R Min-Max
-        val = analogRead(analogInPinRudder);
+        val = analogRead(ANALOG_PIN_RUDDER);
         if (val < calValues.rudderMin) {
             calValues.rudderMin = val;
         } 
@@ -345,8 +345,9 @@ void setup()
         rcChannels[i] = CRSF_DIGITAL_CHANNEL_MIN;
     }
 
-    analogReference(EXTERNAL);
-    pinMode(DIGITAL_PIN_SWITCH_ARM, INPUT_PULLUP);
+    // analogReference(EXTERNAL); /* analogReference() does nothing on teensy (fixed 0-3v3) */
+    analogReadResolution(10); 
+    pinMode(DIGITAL_PIN_SWITCH_AUX1, INPUT_PULLUP);
     pinMode(DIGITAL_PIN_SWITCH_AUX2, INPUT_PULLUP);
     pinMode(DIGITAL_PIN_SWITCH_AUX3, INPUT_PULLUP);
     // pinMode(DIGITAL_PIN_SWITCH_AUX4, INPUT_PULLUP);
@@ -398,19 +399,23 @@ void loop()
 
     uint32_t currentMicros = micros();
 
-    // Read Voltage
-    batteryVoltage = analogRead(VOLTAGE_READ_PIN) / 103.0f; // 98.5
+    #if BATTERY_CHECKS
+        // Read Voltage 
+        batteryVoltage = analogRead(VOLTAGE_READ_PIN) / 103.0f; // 98.5
 
-    if (batteryVoltage < WARNING_VOLTAGE) {
-        blinkLED(DIGITAL_PIN_LED, 1000);
-        // fastBlinkLED(DIGITAL_PIN_LED, 300);
-    }
+        if (batteryVoltage < WARNING_VOLTAGE) {
+            blinkLED(DIGITAL_PIN_LED, 1000);
+            // fastBlinkLED(DIGITAL_PIN_LED, 300);
+        }
+    #else
+        batteryVoltage = 9;
+    #endif
 
     /*
      * Handle analogy input
      */
     // constrain to avoid overflow
-    int analogVal = analogRead(analogInPinAileron);
+    int analogVal = analogRead(ANALOG_PIN_AILERON);
     if (analogVal <= calValues.aileronCenter){
         Aileron_value = map(analogVal,calValues.aileronMin,   calValues.aileronCenter, ADC_MIN, ADC_MID);
     }
@@ -418,7 +423,7 @@ void loop()
         Aileron_value = map(analogVal,calValues.aileronCenter,   calValues.aileronMax, ADC_MID+1, ADC_MAX);
     }
     
-    analogVal = analogRead(analogInPinElevator);
+    analogVal = analogRead(ANALOG_PIN_ELEVATOR);
     if (analogVal <= calValues.elevatorCenter){
         Elevator_value = map(analogVal,calValues.elevatorMin,   calValues.elevatorCenter, ADC_MIN, ADC_MID);
     }
@@ -426,10 +431,10 @@ void loop()
         Elevator_value = map(analogVal,calValues.elevatorCenter,   calValues.elevatorMax, ADC_MID+1, ADC_MAX);
     }
 
-    analogVal = analogRead(analogInPinThrottle);
+    analogVal = analogRead(ANALOG_PIN_THROTTLE);
     Throttle_value = map(analogVal, calValues.thrMax, calValues.thrMin, ADC_MIN, ADC_MAX);
 
-    analogVal = analogRead(analogInPinRudder);
+    analogVal = analogRead(ANALOG_PIN_RUDDER);
     if (analogVal <= calValues.rudderCenter){
         Rudder_value = map(analogVal,calValues.rudderMin,   calValues.rudderCenter, ADC_MIN, ADC_MID);
     }
@@ -468,7 +473,7 @@ void loop()
     /*
      * Handel digital input
      */
-    AUX1_Arm = digitalRead(DIGITAL_PIN_SWITCH_ARM);
+    AUX1_Arm = digitalRead(DIGITAL_PIN_SWITCH_AUX1);
     AUX2_value = digitalRead(DIGITAL_PIN_SWITCH_AUX2);
     AUX3_value = digitalRead(DIGITAL_PIN_SWITCH_AUX3);
     // AUX4_value = digitalRead(DIGITAL_PIN_SWITCH_AUX4);// reuse for LED
@@ -517,31 +522,32 @@ void loop()
     }
 }
 
-ISR(TIMER1_COMPA_vect) { // leave this alone
-    static boolean state = true;
+/* perhaps this is unused? appears to be strictly for PPM */
+// ISR(TIMER1_COMPA_vect) { ///TODO: identify TIMER1_COMPA_vect reg function
+//     static boolean state = true;
 
-    TCNT1 = 0;
+//     TCNT1 = 0; ///TODO: identify TCNT1 reg function
 
-    if (state) { // start pulse
-        digitalWrite(ppmPin, onState);
-        OCR1A = PULSE_LENGTH * 2;
-        state = false;
-    } else { // end pulse and calculate when to start the next pulse
-        static byte cur_chan_numb;
-        static unsigned int calc_rest;
+//     if (state) { // start pulse
+//         digitalWrite(ppmPin, onState);
+//         OCR1A = PULSE_LENGTH * 2;   ///TODO: identify OCR1A reg function
+//         state = false;
+//     } else { // end pulse and calculate when to start the next pulse
+//         static byte cur_chan_numb;
+//         static unsigned int calc_rest;
 
-        digitalWrite(ppmPin, !onState);
-        state = true;
+//         digitalWrite(ppmPin, !onState);
+//         state = true;
 
-        if (cur_chan_numb >= CHANNEL_NUMBER) {
-            cur_chan_numb = 0;
-            calc_rest = calc_rest + PULSE_LENGTH; //
-            OCR1A = (FRAME_LENGTH - calc_rest) * 2;
-            calc_rest = 0;
-        } else {
-            OCR1A = (map(rcChannels[cur_chan_numb], CRSF_DIGITAL_CHANNEL_MIN, CRSF_DIGITAL_CHANNEL_MAX, 1000, 2000) - PULSE_LENGTH) * 2;
-            calc_rest = calc_rest + map(rcChannels[cur_chan_numb], CRSF_DIGITAL_CHANNEL_MIN, CRSF_DIGITAL_CHANNEL_MAX, 1000, 2000);
-            cur_chan_numb++;
-        }
-    }
-}
+//         if (cur_chan_numb >= CHANNEL_NUMBER) {
+//             cur_chan_numb = 0;
+//             calc_rest = calc_rest + PULSE_LENGTH; //
+//             OCR1A = (FRAME_LENGTH - calc_rest) * 2; 
+//             calc_rest = 0;
+//         } else {
+//             OCR1A = (map(rcChannels[cur_chan_numb], CRSF_DIGITAL_CHANNEL_MIN, CRSF_DIGITAL_CHANNEL_MAX, 1000, 2000) - PULSE_LENGTH) * 2;
+//             calc_rest = calc_rest + map(rcChannels[cur_chan_numb], CRSF_DIGITAL_CHANNEL_MIN, CRSF_DIGITAL_CHANNEL_MAX, 1000, 2000);
+//             cur_chan_numb++;
+//         }
+//     }
+// }
