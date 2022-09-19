@@ -80,6 +80,7 @@ const float WARNING_VOLTAGE = 7.4; // 2S Lipo
 
 /* other defines perhaps useful */
 #define BATTERY_CHECKS 0
+// #define DEBUG_CRSF_PACKETS
 
 // from https://github.com/DeviationTX/deviation/pull/1009/ ELRS menu implement in deviation TX
 /*static uint8_t  currentPktRate =1; //  "250Hz", "150Hz", "50Hz"

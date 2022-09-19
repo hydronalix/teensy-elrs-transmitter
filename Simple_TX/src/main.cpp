@@ -382,12 +382,6 @@ void setup()
 
     digitalWrite(DIGITAL_PIN_LED, HIGH); // LED ON
 
-    //calibrationReset();
-    calibrationLoad();
-
-    #ifdef DEBUG
-        Serial.println("Start Calibration");  
-    #endif
 }
 
 void loop()
@@ -416,52 +410,30 @@ void loop()
      * Handle analogy input
      */
     // constrain to avoid overflow
-    int analogVal = analogRead(ANALOG_PIN_AILERON);
-    if (analogVal <= calValues.aileronCenter){
-        Aileron_value = map(analogVal,calValues.aileronMin,   calValues.aileronCenter, ADC_MIN, ADC_MID);
-    }
-    else{
-        Aileron_value = map(analogVal,calValues.aileronCenter,   calValues.aileronMax, ADC_MID+1, ADC_MAX);
-    }
-    
-    analogVal = analogRead(ANALOG_PIN_ELEVATOR);
-    if (analogVal <= calValues.elevatorCenter){
-        Elevator_value = map(analogVal,calValues.elevatorMin,   calValues.elevatorCenter, ADC_MIN, ADC_MID);
-    }
-    else{
-        Elevator_value = map(analogVal,calValues.elevatorCenter,   calValues.elevatorMax, ADC_MID+1, ADC_MAX);
-    }
-
-    analogVal = analogRead(ANALOG_PIN_THROTTLE);
-    Throttle_value = map(analogVal, calValues.thrMax, calValues.thrMin, ADC_MIN, ADC_MAX);
-
-    analogVal = analogRead(ANALOG_PIN_RUDDER);
-    if (analogVal <= calValues.rudderCenter){
-        Rudder_value = map(analogVal,calValues.rudderMin,   calValues.rudderCenter, ADC_MIN, ADC_MID);
-    }
-    else{
-        Rudder_value = map(analogVal,calValues.rudderCenter,   calValues.rudderMax, ADC_MID+1, ADC_MAX);
-    }
+    Aileron_value = analogRead(ANALOG_PIN_AILERON);
+    Elevator_value = analogRead(ANALOG_PIN_ELEVATOR); 
+    Throttle_value = analogRead(ANALOG_PIN_THROTTLE);
+    Rudder_value = analogRead(ANALOG_PIN_RUDDER);
     
     //Constrain value to avoid overflow
-    Aileron_value  = constrain(Aileron_value,  ADC_MIN, ADC_MAX); 
-    Elevator_value = constrain(Elevator_value, ADC_MIN, ADC_MAX); 
-    Throttle_value = constrain(Throttle_value, ADC_MIN, ADC_MAX); 
-    Rudder_value   = constrain(Rudder_value,   ADC_MIN, ADC_MAX); 
+    // Aileron_value  = constrain(Aileron_value,  ADC_MIN, ADC_MAX); 
+    // Elevator_value = constrain(Elevator_value, ADC_MIN, ADC_MAX); 
+    // Throttle_value = constrain(Throttle_value, ADC_MIN, ADC_MAX); 
+    // Rudder_value   = constrain(Rudder_value,   ADC_MIN, ADC_MAX); 
 
-    //Handdle reverse
-    if (Is_Aileron_Reverse == 1){
-        Aileron_value  = 1023-Aileron_value;
-    }
-    if (Is_Elevator_Reverse == 1){
-        Elevator_value = 1023-Elevator_value;
-    }
-    if (Is_Throttle_Reverse == 1){
-        Throttle_value = 1023-Throttle_value;
-    }
-    if (Is_Rudder_Reverse == 1){
-        Rudder_value   = 1023-Rudder_value;
-    }
+    // //Handdle reverse
+    // if (Is_Aileron_Reverse == 1){
+    //     Aileron_value  = 1023-Aileron_value;
+    // }
+    // if (Is_Elevator_Reverse == 1){
+    //     Elevator_value = 1023-Elevator_value;
+    // }
+    // if (Is_Throttle_Reverse == 1){
+    //     Throttle_value = 1023-Throttle_value;
+    // }
+    // if (Is_Rudder_Reverse == 1){
+    //     Rudder_value   = 1023-Rudder_value;
+    // }
     // rcChannels[AILERON] = map(Aileron_value, 1023 - ANALOG_CUTOFF, ANALOG_CUTOFF, CRSF_DIGITAL_CHANNEL_MIN, CRSF_DIGITAL_CHANNEL_MAX);   // reverse
     // rcChannels[ELEVATOR] = map(Elevator_value, 1023 - ANALOG_CUTOFF, ANALOG_CUTOFF, CRSF_DIGITAL_CHANNEL_MIN, CRSF_DIGITAL_CHANNEL_MAX); // reverse
     // rcChannels[THROTTLE] = map(Throttle_value, 1023 - ANALOG_CUTOFF, ANALOG_CUTOFF, CRSF_DIGITAL_CHANNEL_MIN, CRSF_DIGITAL_CHANNEL_MAX); // reverse
@@ -474,17 +446,19 @@ void loop()
     /*
      * Handel digital input
      */
-    AUX1_Arm = digitalRead(DIGITAL_PIN_SWITCH_AUX1);
+    AUX1_Arm = !digitalRead(DIGITAL_PIN_SWITCH_AUX1);
     AUX2_value = digitalRead(DIGITAL_PIN_SWITCH_AUX2);
     AUX3_value = digitalRead(DIGITAL_PIN_SWITCH_AUX3);
     // AUX4_value = digitalRead(DIGITAL_PIN_SWITCH_AUX4);// reuse for LED
+
+    // Serial.printf("analog reads: %d %d %d\r", Throttle_value, Rudder_value, AUX1_Arm);
 
     // Aux Channels
     rcChannels[AUX1] = (AUX1_Arm == 0)   ? CRSF_DIGITAL_CHANNEL_MIN : CRSF_DIGITAL_CHANNEL_MAX;
     rcChannels[AUX2] = (AUX2_value == 0) ? CRSF_DIGITAL_CHANNEL_MIN : CRSF_DIGITAL_CHANNEL_MAX;
     rcChannels[AUX3] = (AUX3_value == 1) ? CRSF_DIGITAL_CHANNEL_MIN : CRSF_DIGITAL_CHANNEL_MAX;
     // rcChannels[AUX4] = (AUX4_value == 0) ? CRSF_DIGITAL_CHANNEL_MIN : CRSF_DIGITAL_CHANNEL_MAX;
-
+    // Serial.printf("channel vals: %d %d %d\r", rcChannels+THROTTLE, rcChannels+RUDDER, rcChannels+AUX1);
     selectSetting();
 
     if (currentMicros > crsfTime) {
@@ -495,9 +469,11 @@ void loop()
                 // Build commond packet
                 crsfClass.crsfPrepareDataPacket(crsfPacket, rcChannels);
                 crsfClass.CrsfWritePacket(crsfPacket, CRSF_PACKET_SIZE);
+                #ifdef DEBUG_CRSF_PACKETS
                 Serial.print("wrote packet: "); 
                 for (int i = 0; i < 26; i++) {Serial.print(crsfPacket[i], HEX);}
                 Serial.print('\r');
+                #endif
                 loopCount++;
             }
 
@@ -507,9 +483,11 @@ void loop()
                     crsfClass.crsfPrepareCmdPacket(crsfCmdPacket, ELRS_PKT_RATE_COMMAND, currentPktRate);
                     // buildElrsPacket(crsfCmdPacket,ELRS_WIFI_COMMAND,0x01);
                     crsfClass.CrsfWritePacket(crsfCmdPacket, CRSF_CMD_PACKET_SIZE);
+                    #ifdef DEBUG_CRSF_PACKETS
                     Serial.print("wrote packet: "); 
                     for (int i = 0; i < 8; i++) {Serial.print(crsfCmdPacket[i], HEX);}
                     Serial.println();
+                    #endif
                 }
                 loopCount++;
             } else if (loopCount > 505 && loopCount < 510) { // repeat 10 packets to avoid bad packet
@@ -517,17 +495,21 @@ void loop()
                     crsfClass.crsfPrepareCmdPacket(crsfCmdPacket, ELRS_POWER_COMMAND, currentPower);
                     // buildElrsPacket(crsfCmdPacket,ELRS_WIFI_COMMAND,0x01);
                     crsfClass.CrsfWritePacket(crsfCmdPacket, CRSF_CMD_PACKET_SIZE);
+                    #ifdef DEBUG_CRSF_PACKETS
                     Serial.print("wrote packet: "); 
                     for (int i = 0; i < 8; i++) {Serial.print(crsfCmdPacket[i], HEX);}
                     Serial.println();
+                    #endif
                 }
                 loopCount++;
             } else {
                 crsfClass.crsfPrepareDataPacket(crsfPacket, rcChannels);
                 crsfClass.CrsfWritePacket(crsfPacket, CRSF_PACKET_SIZE);
+                #ifdef DEBUG_CRSF_PACKETS
                 Serial.print("wrote packet: "); 
-                for (int i = 0; i < 26; i++) {Serial.print(' '); Serial.print(crsfPacket[i], HEX);}
-                Serial.print('\r');
+                for (int i = 6; i <= 9; i++) { Serial.print(' '); Serial.print(crsfPacket[i], HEX); }
+                Serial.print('\n');
+                #endif
             }
         #endif
         crsfTime = currentMicros + CRSF_TIME_BETWEEN_FRAMES_US;
