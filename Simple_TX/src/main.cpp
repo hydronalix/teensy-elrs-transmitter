@@ -370,6 +370,7 @@ void setup()
 #endif
 
     delay(1000); // Give enough time for uploda firmware 1 second
+    Serial.begin(115200);
 
     #ifdef DEBUG
         Serial.begin(115200);
@@ -494,6 +495,9 @@ void loop()
                 // Build commond packet
                 crsfClass.crsfPrepareDataPacket(crsfPacket, rcChannels);
                 crsfClass.CrsfWritePacket(crsfPacket, CRSF_PACKET_SIZE);
+                Serial.print("wrote packet: "); 
+                for (int i = 0; i < 26; i++) {Serial.print(crsfPacket[i], HEX);}
+                Serial.print('\r');
                 loopCount++;
             }
 
@@ -503,6 +507,9 @@ void loop()
                     crsfClass.crsfPrepareCmdPacket(crsfCmdPacket, ELRS_PKT_RATE_COMMAND, currentPktRate);
                     // buildElrsPacket(crsfCmdPacket,ELRS_WIFI_COMMAND,0x01);
                     crsfClass.CrsfWritePacket(crsfCmdPacket, CRSF_CMD_PACKET_SIZE);
+                    Serial.print("wrote packet: "); 
+                    for (int i = 0; i < 8; i++) {Serial.print(crsfCmdPacket[i], HEX);}
+                    Serial.println();
                 }
                 loopCount++;
             } else if (loopCount > 505 && loopCount < 510) { // repeat 10 packets to avoid bad packet
@@ -510,12 +517,17 @@ void loop()
                     crsfClass.crsfPrepareCmdPacket(crsfCmdPacket, ELRS_POWER_COMMAND, currentPower);
                     // buildElrsPacket(crsfCmdPacket,ELRS_WIFI_COMMAND,0x01);
                     crsfClass.CrsfWritePacket(crsfCmdPacket, CRSF_CMD_PACKET_SIZE);
+                    Serial.print("wrote packet: "); 
+                    for (int i = 0; i < 8; i++) {Serial.print(crsfCmdPacket[i], HEX);}
+                    Serial.println();
                 }
                 loopCount++;
             } else {
                 crsfClass.crsfPrepareDataPacket(crsfPacket, rcChannels);
                 crsfClass.CrsfWritePacket(crsfPacket, CRSF_PACKET_SIZE);
-
+                Serial.print("wrote packet: "); 
+                for (int i = 0; i < 26; i++) {Serial.print(' '); Serial.print(crsfPacket[i], HEX);}
+                Serial.print('\r');
             }
         #endif
         crsfTime = currentMicros + CRSF_TIME_BETWEEN_FRAMES_US;
